@@ -7,47 +7,33 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom scrollbar for chat */
-        #chatbox::-webkit-scrollbar {
-            width: 8px;
-        }
-        #chatbox::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        #chatbox::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-        #chatbox::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
+        #chatbox::-webkit-scrollbar { width: 8px; }
+        #chatbox::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        #chatbox::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        #chatbox::-webkit-scrollbar-thumb:hover { background: #555; }
         /* Style for code blocks in chat */
         .chat-message pre {
-            background-color: #f4f4f4;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 10px;
-            overflow-x: auto; /* Add horizontal scroll for long code lines */
-            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; /* Monospace font */
-            font-size: 0.9em; /* Slightly smaller font size */
-            white-space: pre-wrap; /* Wrap long lines */
-            word-wrap: break-word; /* Break words if necessary */
+            background-color: #f4f4f4; border: 1px solid #ddd; border-radius: 4px;
+            padding: 10px; overflow-x: auto; font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+            font-size: 0.9em; white-space: pre-wrap; word-wrap: break-word;
         }
         .chat-message code {
-           font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-           background-color: #f4f4f4; /* Light background for inline code */
-           padding: 0.2em 0.4em;
-           margin: 0;
-           font-size: 85%;
-           border-radius: 3px;
+           font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; background-color: #f4f4f4;
+           padding: 0.2em 0.4em; margin: 0; font-size: 85%; border-radius: 3px;
         }
-        /* Style for the namespace info */
-        .namespace-info {
+        /* Style for the namespace/evaluation info */
+        .meta-info {
             font-size: 0.75rem; /* text-xs */
             color: #6b7280; /* gray-500 */
             margin-top: 4px; /* mt-1 */
             margin-left: 0.75rem; /* ml-3 approximation */
+            display: block; /* Ensure it takes its own line */
         }
+        .evaluation-correct { color: #10b981; } /* green-600 */
+        .evaluation-incorrect { color: #ef4444; } /* red-500 */
+        .evaluation-partial { color: #f59e0b; } /* amber-500 */
+        .evaluation-other { color: #6b7280; } /* gray-500 */
+
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen font-sans">
@@ -58,9 +44,10 @@
 
         <div id="chatbox" class="h-96 overflow-y-auto border border-gray-300 rounded-lg p-4 mb-4 bg-gray-50 space-y-4">
             <div class="chat-message bot">
-                <p class="bg-indigo-100 text-indigo-800 rounded-lg p-3 inline-block max-w-xs md:max-w-md">
-                    Hello! Ask me anything about the Chai Code documentation.
-                </p>
+                 <div class="inline-block"> <p class="bg-indigo-100 text-indigo-800 rounded-lg p-3 inline-block max-w-xs md:max-w-md">
+                        Hello! Ask me anything about the Chai Code documentation.
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -94,49 +81,68 @@
         const statusMessage = document.getElementById('status-message');
 
         // Function to add a message to the chatbox
-        // *** MODIFIED: Accept namespaces (plural) parameter as a list ***
-        function addMessage(sender, message, namespaces = null) {
-            const messageContainer = document.createElement('div'); // Container for message + namespace
-            messageContainer.classList.add('chat-message', sender);
+        // *** MODIFIED: Accept namespaces list and evaluation string ***
+        function addMessage(sender, message, namespaces = null, evaluation = null) {
+            const messageRow = document.createElement('div'); // Row container for alignment
+            messageRow.classList.add('chat-message', sender);
+             if (sender === 'user') {
+                messageRow.classList.add('text-right'); // Align user messages right
+            }
 
-            const messageDiv = document.createElement('div'); // Div for the message bubble itself
+            const messageContainer = document.createElement('div'); // Container for bubble + meta info
+            messageContainer.classList.add('inline-block'); // Make container inline-block
 
             const messageP = document.createElement('p');
-            messageP.classList.add('rounded-lg', 'p-3', 'inline-block', 'max-w-xs', 'md:max-w-md');
+            messageP.classList.add('rounded-lg', 'p-3', 'inline-block', 'max-w-xs', 'md:max-w-md', 'text-left'); // Ensure text inside bubble is left-aligned
 
             if (sender === 'user') {
-                messageP.classList.add('bg-blue-100', 'text-blue-800', 'ml-auto'); // User messages align right
-                messageDiv.classList.add('text-right');
-                 // Use textContent for user input to prevent HTML injection
-                messageP.textContent = message;
-                messageDiv.appendChild(messageP); // Add bubble to its div
-                messageContainer.appendChild(messageDiv); // Add bubble div to container
+                messageP.classList.add('bg-blue-100', 'text-blue-800');
+                messageP.textContent = message; // Use textContent for user input
             } else { // Bot message
                 messageP.classList.add('bg-indigo-100', 'text-indigo-800');
-                // Use innerHTML for bot response to render potential markdown (like code blocks)
+                // Use innerHTML for bot response to render potential markdown
                 message = message.replace(/```([\s\S]*?)```/g, (match, code) => {
                     const escapedCode = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                     return `<pre><code>${escapedCode.trim()}</code></pre>`;
                 });
                 message = message.replace(/`([^`]+)`/g, '<code>$1</code>');
                 messageP.innerHTML = message; // Render potentially formatted bot response
-
-                messageDiv.appendChild(messageP); // Add bubble to its div
-                messageContainer.appendChild(messageDiv); // Add bubble div to container
-
-                // *** ADDED: Display list of namespaces if provided ***
-                if (namespaces && namespaces.length > 0) {
-                    const namespaceDiv = document.createElement('div');
-                    namespaceDiv.classList.add('namespace-info'); // Apply styling
-                    // Join the list of namespaces
-                    const namespaceText = namespaces.join(', ');
-                    namespaceDiv.textContent = `(Context from: ${namespaceText})`;
-                    messageContainer.appendChild(namespaceDiv); // Add namespace info below the bubble
-                }
-                // *** END ADDED ***
             }
 
-            chatbox.appendChild(messageContainer); // Add the container (bubble + optional namespace)
+            messageContainer.appendChild(messageP); // Add bubble to container
+
+            // *** ADDED: Display namespace(s) if provided ***
+            if (namespaces && namespaces.length > 0) {
+                const namespaceDiv = document.createElement('div');
+                namespaceDiv.classList.add('meta-info'); // Apply styling
+                const namespaceText = namespaces.join(', ');
+                namespaceDiv.textContent = `Context from: ${namespaceText}`;
+                messageContainer.appendChild(namespaceDiv); // Add namespace info below the bubble
+            }
+
+             // *** ADDED: Display evaluation if provided ***
+             if (sender === 'bot' && evaluation) {
+                 const evaluationDiv = document.createElement('div');
+                 evaluationDiv.classList.add('meta-info'); // Apply styling
+
+                 // Add specific color classes based on evaluation result
+                 if (evaluation === "Correct") {
+                     evaluationDiv.classList.add('evaluation-correct');
+                 } else if (evaluation.startsWith("Incorrect")) {
+                     evaluationDiv.classList.add('evaluation-incorrect');
+                 } else if (evaluation === "Incorrect - Partial") {
+                      evaluationDiv.classList.add('evaluation-partial');
+                 } else {
+                      evaluationDiv.classList.add('evaluation-other');
+                 }
+
+                 evaluationDiv.textContent = `Evaluation: ${evaluation}`;
+                 messageContainer.appendChild(evaluationDiv); // Add evaluation info
+             }
+            // *** END ADDED ***
+
+            messageRow.appendChild(messageContainer); // Add container to the row
+            chatbox.appendChild(messageRow); // Add the row to the chatbox
 
             // Scroll to the bottom
             chatbox.scrollTop = chatbox.scrollHeight;
@@ -144,24 +150,20 @@
 
         // Handle form submission
         chatForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); // Prevent default form submission
+            e.preventDefault();
 
             const query = userInput.value.trim();
-            if (!query) return; // Don't send empty messages
+            if (!query) return;
 
-            // Add user message to chatbox
             addMessage('user', query);
-            userInput.value = ''; // Clear input field
-            sendButton.disabled = true; // Disable button while processing
-            statusMessage.textContent = 'Thinking...'; // Show status
+            userInput.value = '';
+            sendButton.disabled = true;
+            statusMessage.textContent = 'Thinking...';
 
             try {
-                // Send query to backend
                 const response = await fetch('/chat', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json', },
                     body: JSON.stringify({ query: query }),
                 });
 
@@ -172,17 +174,17 @@
 
                 const data = await response.json();
 
-                // *** MODIFIED: Pass namespaces_used list to addMessage ***
-                addMessage('bot', data.answer, data.namespaces_used);
+                // *** MODIFIED: Pass namespaces_used list and evaluation string ***
+                addMessage('bot', data.answer, data.namespaces_used, data.evaluation);
                 // *** END MODIFIED ***
 
             } catch (error) {
                 console.error('Error fetching chat response:', error);
                 addMessage('bot', `Sorry, I encountered an error: ${error.message}`);
             } finally {
-                 sendButton.disabled = false; // Re-enable button
-                 statusMessage.textContent = ''; // Clear status
-                 userInput.focus(); // Focus back on input
+                 sendButton.disabled = false;
+                 statusMessage.textContent = '';
+                 userInput.focus();
             }
         });
 
