@@ -13,7 +13,7 @@ This project implements a Retrieval-Augmented Generation (RAG) application using
 
 ## Project Structure
 
-
+![App Screenshot](./images/img.png)
 
 rag_chaicode/
 ├── backend/

@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic-settings
+langchain
+langchain-openai
+langchain-qdrant
+qdrant-client
+langchain-community
+beautifulsoup4
+html2text
+jinja2
+requests # Added dependency for WebBaseLoader
+tiktoken # Often needed for token counting with OpenAI
+lxml

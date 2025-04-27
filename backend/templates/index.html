@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chai Code Docs AI Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for chat */
+        #chatbox::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chatbox::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        #chatbox::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        #chatbox::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Style for code blocks in chat */
+        .chat-message pre {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            overflow-x: auto; /* Add horizontal scroll for long code lines */
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; /* Monospace font */
+            font-size: 0.9em; /* Slightly smaller font size */
+            white-space: pre-wrap; /* Wrap long lines */
+            word-wrap: break-word; /* Break words if necessary */
+        }
+        .chat-message code {
+           font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+           background-color: #f4f4f4; /* Light background for inline code */
+           padding: 0.2em 0.4em;
+           margin: 0;
+           font-size: 85%;
+           border-radius: 3px;
+        }
+        /* Style for the namespace info */
+        .namespace-info {
+            font-size: 0.75rem; /* text-xs */
+            color: #6b7280; /* gray-500 */
+            margin-top: 4px; /* mt-1 */
+            margin-left: 0.75rem; /* ml-3 approximation */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen font-sans">
+    <div class="bg-white shadow-lg rounded-lg p-6 md:p-8 w-full max-w-2xl">
+        <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6">
+            Ask Chai Code Docs AI
+        </h1>
+
+        <div id="chatbox" class="h-96 overflow-y-auto border border-gray-300 rounded-lg p-4 mb-4 bg-gray-50 space-y-4">
+            <div class="chat-message bot">
+                <p class="bg-indigo-100 text-indigo-800 rounded-lg p-3 inline-block max-w-xs md:max-w-md">
+                    Hello! Ask me anything about the Chai Code documentation.
+                </p>
+            </div>
+        </div>
+
+        <form id="chat-form" class="flex space-x-3">
+            <input
+                type="text"
+                id="user-input"
+                placeholder="Type your question here..."
+                required
+                class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <button
+                type="submit"
+                id="send-button"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out disabled:opacity-50"
+            >
+                Send
+            </button>
+        </form>
+         <p id="status-message" class="text-sm text-gray-500 mt-2 text-center h-5"></p> </div>
+
+    <footer class="text-center text-gray-500 text-sm mt-6 pb-4">
+        Powered by FastAPI, Langchain, OpenAI & Qdrant
+    </footer>
+
+    <script>
+        const chatbox = document.getElementById('chatbox');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const statusMessage = document.getElementById('status-message');
+
+        // Function to add a message to the chatbox
+        // *** MODIFIED: Accept namespace parameter for bot messages ***
+        function addMessage(sender, message, namespace = null) {
+            const messageContainer = document.createElement('div'); // Container for message + namespace
+            messageContainer.classList.add('chat-message', sender);
+
+            const messageDiv = document.createElement('div'); // Div for the message bubble itself
+
+            const messageP = document.createElement('p');
+            messageP.classList.add('rounded-lg', 'p-3', 'inline-block', 'max-w-xs', 'md:max-w-md');
+
+            if (sender === 'user') {
+                messageP.classList.add('bg-blue-100', 'text-blue-800', 'ml-auto'); // User messages align right
+                messageDiv.classList.add('text-right');
+                 // Use textContent for user input to prevent HTML injection
+                messageP.textContent = message;
+                messageDiv.appendChild(messageP); // Add bubble to its div
+                messageContainer.appendChild(messageDiv); // Add bubble div to container
+            } else { // Bot message
+                messageP.classList.add('bg-indigo-100', 'text-indigo-800');
+                // Use innerHTML for bot response to render potential markdown (like code blocks)
+                // Convert markdown code blocks to styled pre/code tags
+                message = message.replace(/```([\s\S]*?)```/g, (match, code) => {
+                    // Escape HTML within the code block before wrapping
+                    const escapedCode = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    return `<pre><code>${escapedCode.trim()}</code></pre>`;
+                });
+                 // Convert inline code ticks
+                message = message.replace(/`([^`]+)`/g, '<code>$1</code>');
+                messageP.innerHTML = message; // Render potentially formatted bot response
+
+                messageDiv.appendChild(messageP); // Add bubble to its div
+                messageContainer.appendChild(messageDiv); // Add bubble div to container
+
+                // *** ADDED: Display namespace if provided ***
+                if (namespace) {
+                    const namespaceDiv = document.createElement('div');
+                    namespaceDiv.classList.add('namespace-info'); // Apply styling
+                    namespaceDiv.textContent = `(Context from: ${namespace})`;
+                    messageContainer.appendChild(namespaceDiv); // Add namespace info below the bubble
+                }
+                // *** END ADDED ***
+            }
+
+            chatbox.appendChild(messageContainer); // Add the container (bubble + optional namespace)
+
+            // Scroll to the bottom
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        // Handle form submission
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Prevent default form submission
+
+            const query = userInput.value.trim();
+            if (!query) return; // Don't send empty messages
+
+            // Add user message to chatbox
+            addMessage('user', query);
+            userInput.value = ''; // Clear input field
+            sendButton.disabled = true; // Disable button while processing
+            statusMessage.textContent = 'Thinking...'; // Show status
+
+            try {
+                // Send query to backend
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // *** MODIFIED: Pass namespace to addMessage ***
+                // Add bot response to chatbox, including the namespace used
+                addMessage('bot', data.answer, data.namespace_used);
+                // *** END MODIFIED ***
+
+            } catch (error) {
+                console.error('Error fetching chat response:', error);
+                addMessage('bot', `Sorry, I encountered an error: ${error.message}`);
+            } finally {
+                 sendButton.disabled = false; // Re-enable button
+                 statusMessage.textContent = ''; // Clear status
+                 userInput.focus(); // Focus back on input
+            }
+        });
+
+         // Initial focus on input
+         userInput.focus();
+    </script>
+</body>
+</html>
