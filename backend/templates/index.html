@@ -94,8 +94,8 @@
         const statusMessage = document.getElementById('status-message');
 
         // Function to add a message to the chatbox
-        // *** MODIFIED: Accept namespace parameter for bot messages ***
-        function addMessage(sender, message, namespace = null) {
+        // *** MODIFIED: Accept namespaces (plural) parameter as a list ***
+        function addMessage(sender, message, namespaces = null) {
             const messageContainer = document.createElement('div'); // Container for message + namespace
             messageContainer.classList.add('chat-message', sender);
 
@@ -114,24 +114,23 @@
             } else { // Bot message
                 messageP.classList.add('bg-indigo-100', 'text-indigo-800');
                 // Use innerHTML for bot response to render potential markdown (like code blocks)
-                // Convert markdown code blocks to styled pre/code tags
                 message = message.replace(/```([\s\S]*?)```/g, (match, code) => {
-                    // Escape HTML within the code block before wrapping
                     const escapedCode = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                     return `<pre><code>${escapedCode.trim()}</code></pre>`;
                 });
-                 // Convert inline code ticks
                 message = message.replace(/`([^`]+)`/g, '<code>$1</code>');
                 messageP.innerHTML = message; // Render potentially formatted bot response
 
                 messageDiv.appendChild(messageP); // Add bubble to its div
                 messageContainer.appendChild(messageDiv); // Add bubble div to container
 
-                // *** ADDED: Display namespace if provided ***
-                if (namespace) {
+                // *** ADDED: Display list of namespaces if provided ***
+                if (namespaces && namespaces.length > 0) {
                     const namespaceDiv = document.createElement('div');
                     namespaceDiv.classList.add('namespace-info'); // Apply styling
-                    namespaceDiv.textContent = `(Context from: ${namespace})`;
+                    // Join the list of namespaces
+                    const namespaceText = namespaces.join(', ');
+                    namespaceDiv.textContent = `(Context from: ${namespaceText})`;
                     messageContainer.appendChild(namespaceDiv); // Add namespace info below the bubble
                 }
                 // *** END ADDED ***
@@ -173,9 +172,8 @@
 
                 const data = await response.json();
 
-                // *** MODIFIED: Pass namespace to addMessage ***
-                // Add bot response to chatbox, including the namespace used
-                addMessage('bot', data.answer, data.namespace_used);
+                // *** MODIFIED: Pass namespaces_used list to addMessage ***
+                addMessage('bot', data.answer, data.namespaces_used);
                 // *** END MODIFIED ***
 
             } catch (error) {

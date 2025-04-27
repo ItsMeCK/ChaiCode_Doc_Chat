@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles # If you add CSS/JS later
+from typing import List # Import List
 
 # Import core components
 from core.config import settings
@@ -65,35 +66,30 @@ async def handle_chat(message: ChatMessage):
         logging.warning("Received empty query.")
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
-    # 1. Determine Namespace
-    namespace = await get_namespace_from_query(user_query)
-    if not namespace:
-        logging.warning(f"Could not determine a valid namespace for query: '{user_query}'.")
-        # Fallback: Maybe try searching a default namespace or inform the user
-        # For now, let's inform the user we couldn't route the query.
-        # Alternatively, could try searching all known namespaces, but that's less efficient.
-        # Let's try a default search in 'getting_started' as a simple fallback.
-        logging.info("Falling back to searching 'getting_started' namespace.")
-        namespace = "getting_started"
-        # Or return an error/specific message:
-        # return ChatResponse(answer="Sorry, I couldn't determine the relevant documentation section for your query.", namespace_used=None)
+    # 1. Determine Potentially Multiple Namespaces
+    # Pass max_namespaces=2 to get up to 2 relevant namespaces
+    namespaces = await get_namespace_from_query(user_query, max_namespaces=2)
+    if not namespaces:
+        # Handle routing failure (e.g., return default message)
+        logging.warning(f"Could not determine any valid namespaces for query: '{user_query}'.")
+        answer = "Sorry, I couldn't determine the relevant documentation section(s) for your query. Please try rephrasing."
+        return ChatResponse(answer=answer, namespaces_used=None) # Return None or empty list for namespaces_used
 
-
-    # 2. Retrieve Documents
-    retrieved_docs = await search_documents(user_query, namespace)
+    # 2. Retrieve Documents from determined namespaces
+    retrieved_docs = await search_documents(user_query, namespaces)
 
     if not retrieved_docs:
-        logging.info(f"No relevant documents found in namespace '{namespace}' for query: '{user_query}'.")
+        logging.info(f"No relevant documents found in namespace(s) {namespaces} for query: '{user_query}'.")
         # Respond that no context was found
-        answer = "I couldn't find specific information about that in the documentation sections I searched. You could try rephrasing your question."
-        return ChatResponse(answer=answer, namespace_used=namespace)
+        answer = "I looked through the relevant documentation section(s), but couldn't find specific information about that. You could try rephrasing your question."
+        return ChatResponse(answer=answer, namespaces_used=namespaces) # Return the namespaces we searched
 
-
-    # 3. Generate Answer
+    # 3. Generate Answer using combined context
     answer = await get_answer_from_context(user_query, retrieved_docs)
 
-    logging.info(f"Generated answer for query: '{user_query}' using namespace: '{namespace}'")
-    return ChatResponse(answer=answer, namespace_used=namespace)
+    logging.info(f"Generated answer for query: '{user_query}' using namespace(s): {namespaces}")
+    # Return the list of namespaces used for retrieval
+    return ChatResponse(answer=answer, namespaces_used=namespaces)
 
 # --- Health Check Endpoint (Optional) ---
 @app.get("/health")

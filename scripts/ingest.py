@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 BASE_DOCS_URL = "https://docs.chaicode.com"
 # Start discovery from the 'Getting Started' page
 MAIN_YOUTUBE_PAGE = urljoin(BASE_DOCS_URL, "/youtube/getting-started/")
-# Recursion depth (not used in this version)
+# Recursion depth (not used in this version as we load subsections directly)
 # RECURSION_DEPTH = 2
 REQUESTS_TIMEOUT = 30 # Timeout for fetching discovery page
 
@@ -344,7 +344,7 @@ if __name__ == "__main__":
 
         # After processing all subsections for the current section, embed and store the collected chunks
         if all_splits_for_section:
-            logging.info(f"Collected {len(all_splits_for_section)} chunks from {len(subsections)} subsections for '{collection_name}'.")
+            logging.info(f"Collected {len(all_splits_for_section)} chunks from {len(subsections) - subsection_load_errors} successfully loaded subsections for '{collection_name}'.")
             # Call function to embed and store these chunks in the main section's collection
             success = embed_and_store_chunks(all_splits_for_section, collection_name)
             if success:
